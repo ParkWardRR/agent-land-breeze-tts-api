@@ -6,6 +6,9 @@ responses/
 *.pcm
 *.tmp
 __pycache__/
+logs/
+breeze-tts-mlx/
+nimbalyst-local/
 # Voice clips are personal data (and often someone else's voice): keep them out of git.
 voices/*
 !voices/README.md
