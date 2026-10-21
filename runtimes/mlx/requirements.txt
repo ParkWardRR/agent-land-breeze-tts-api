@@ -20,8 +20,9 @@ transformers>=4.57
 fastapi>=0.115
 uvicorn>=0.34
 
-# Model download
+# Model download (also used by client.py and benchmark)
 huggingface_hub[hf_xet]
+requests>=2.32
 
 # breeze-tts-mlx (install from source)
 # git clone https://github.com/rishikksh20/breeze-tts-mlx.git

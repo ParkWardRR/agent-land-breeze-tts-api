@@ -12,7 +12,7 @@ A self-hosted, streaming text-to-speech API for [Breeze TTS 2](https://huggingfa
   - **GGUF (default):** Breeze-TTS-2.cpp, Q8_0 with the CUDA backend, using about 4–5 GB of GPU memory.
   - **PyTorch:** the original runtime, using about 17–18 GB, and faster.
   - **MLX (macOS):** Apple Silicon native via Metal GPU, using about 4–9 GB of unified memory. Fastest on M4.
-- **One config file:** GPU, model, port and tuning are all in `.env`. `scripts/configure.py` (NVIDIA) or `scripts/configure_macos.py` (Apple Silicon) detects the hardware and fills it in.
+- **One config file:** GPU, model, port and tuning are all in `.env`. `scripts/configure.py` (NVIDIA) or `scripts/configure-macos.swift` (Apple Silicon) detects the hardware and fills it in.
 - **Self-documenting:** `GET /usage` serves [API.md](API.md).
 
 > **Deploying with an AI agent?** Point it at **[AGENTS.md](AGENTS.md)**: a step-by-step deploy, adapt and verify guide.
@@ -32,18 +32,17 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 
 ```bash
 git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git && cd agent-land-breeze-tts-api
-brew install uv sox
-pip install -U "huggingface_hub[hf_xet]" requests
-pip install -r runtimes/mlx/requirements.txt
-# Install breeze-tts-mlx from source:
-git clone https://github.com/rishikksh20/breeze-tts-mlx.git && pip install -e breeze-tts-mlx/
-python scripts/configure_macos.py    # detect the chip, write .env (auto-selects model by memory)
-python scripts/download_models.py    # fetch the MLX weights
-./runtimes/mlx/run.sh               # start natively with Metal GPU (no Docker)
-python client.py "Hello there." --instruction "A calm, friendly adult voice." -o hello.wav
+brew install python@3.12 sox
+swift scripts/configure-macos.swift   # detect chip + memory, write .env
+swift scripts/download-models.swift   # fetch MLX weights from HuggingFace
+swift runtimes/mlx/launch.swift       # create venv, install deps, start server
+# In another terminal:
+.venv/bin/python client.py "Hello there." --instruction "A calm, friendly adult voice." -o hello.wav
 ```
 
-> **Auto-start on login:** `python scripts/install_launchd.py` installs a launchd agent that starts the API on login and restarts on crash.
+All macOS tooling is native Swift. The launch script auto-creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), and starts the server with Metal GPU acceleration.
+
+> **Auto-start on login:** `swift scripts/install-launchd.swift` installs a launchd agent that starts the API on login and restarts on crash.
 
 ## Performance
 
@@ -56,12 +55,11 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 | PyTorch, fast mode | 0.1–0.5 s | 0.58–0.73 | ~17–18 GB | ~10–11 s (estimated from RTF) |
 | PyTorch, eager | 0.65–2.8 s | 3.1–3.5 | ~9.4 GB | ~50 s (estimated from RTF) |
 
-### Apple Silicon (M4 Pro 48 GB, macOS — from Gust-MLX benchmarks)
+### Apple Silicon (M4, 24 GB, macOS 27 Tahoe)
 
 | Runtime | Time to first audio | Speed (RTF) | Memory |
 |---|---|---|---|
-| MLX, Gust-MLX (bf16+int8) | 0.14–0.21 s | 0.62 | ~8.9 GB unified |
-| MLX, INT8 (rishikksh20) | ~0.21–0.30 s | ~0.53 | ~4 GB unified |
+| MLX, INT8 (rishikksh20/Breeze-TTS-2-mlx) | ~0.5 s | ~1.9 | ~4 GB unified |
 
 Warm responses played immediately start after about 2–4.5 s and didn't stall in testing on an otherwise idle GPU. **Sharing the GPU with another heavy job slows speech down 3–5×.** [BENCHMARKS.md](BENCHMARKS.md) has all the numbers, the models tested and the GPU-sharing results; `scripts/benchmark.py` measures your own hardware.
 
@@ -73,8 +71,8 @@ Warm responses played immediately start after about 2–4.5 s and didn't stall i
 | `compose.yaml` | Both runtimes as Compose profiles; reads only `.env` |
 | `runtimes/gguf/` | Default runtime: `Dockerfile` (Breeze-TTS-2.cpp at a pinned commit, CUDA), `compat_api.py` (the API layer), `run.sh` |
 | `runtimes/pytorch/` | PyTorch runtime: `voice_api.py` + `upstream/` (BreezeBlue's inference code, a git submodule) |
-| `runtimes/mlx/` | **MLX runtime (macOS):** `mlx_api.py` (full API with warm responses), `mlx_engine.py` (inference wrapper), `run.sh` |
-| `scripts/` | `configure.py` (NVIDIA), `configure_macos.py` (Apple Silicon), `download_models.py`, `benchmark.py`, `install_launchd.py` |
+| `runtimes/mlx/` | **MLX runtime (macOS):** `mlx_api.py` (full API with warm responses), `mlx_engine.py` (inference wrapper), `launch.swift` (native launcher) |
+| `scripts/` | Swift (macOS): `configure-macos.swift`, `download-models.swift`, `benchmark-macos.swift`, `install-launchd.swift`. Python (NVIDIA): `configure.py`, `download_models.py`, `benchmark.py` |
 | `benchmarks/results/` | Raw benchmark results (JSON) |
 | `voices/` | Saved voices. Not committed; see [voices/README.md](voices/README.md) |
 | `client.py` | Command-line client: streams to WAV, prints timings and the voice id |

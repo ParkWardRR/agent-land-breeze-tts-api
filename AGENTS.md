@@ -8,10 +8,10 @@ Everything that varies between machines lives in **`.env`** (created from the co
 
 | To change... | Set in `.env` | Then |
 |---|---|---|
-| Runtime (GGUF, PyTorch or MLX) | `COMPOSE_PROFILES=gguf`, `pytorch` or `mlx` | NVIDIA: `docker compose up -d --build`; macOS: `./runtimes/mlx/run.sh` |
+| Runtime (GGUF, PyTorch or MLX) | `COMPOSE_PROFILES=gguf`, `pytorch` or `mlx` | NVIDIA: `docker compose up -d --build`; macOS: `swift runtimes/mlx/launch.swift` |
 | GPU architecture (NVIDIA) | `CUDA_ARCHS` (GGUF), `FLASH_ATTN_CUDA_ARCHS` (PyTorch); `scripts/configure.py` sets both | rebuild: `docker compose up -d --build` |
 | Which GPU (NVIDIA) | `BREEZE_GPU=all` or an index / UUID from `nvidia-smi -L` | `docker compose up -d` |
-| MLX model variant | `BREEZE_MLX_REPO` and `BREEZE_MLX_MODEL_DIR`; `scripts/configure_macos.py` sets both | `python scripts/download_models.py && ./runtimes/mlx/run.sh` |
+| MLX model variant | `BREEZE_MLX_REPO` and `BREEZE_MLX_MODEL_DIR`; `scripts/configure-macos.swift` sets both | `swift scripts/download-models.swift && swift runtimes/mlx/launch.swift` |
 | Model / quantization | `BREEZE_GGUF_FILE` (options listed in `.env.example`) | `python scripts/download_models.py && docker compose up -d` |
 | Where the weights live | `BREEZE_MODELS_DIR` | restart the runtime |
 | Port / LAN exposure | `BREEZE_PORT`, `BREEZE_BIND` (`127.0.0.1` = this machine only) | restart the runtime |
@@ -24,7 +24,7 @@ Everything that varies between machines lives in **`.env`** (created from the co
 |---|---|---|---|---|
 | **GGUF (default)** | `runtimes/gguf/` (Breeze-TTS-2.cpp + `compat_api.py`) | ~4–5 GB VRAM | TTFA ~0.35–0.9 s, RTF ~0.8–1.0 (RTX 4090) | yes |
 | PyTorch | `runtimes/pytorch/` (`voice_api.py` + upstream submodule) | ~17–18 GB VRAM | TTFA ~0.1–0.5 s, RTF ~0.6–0.7 (RTX 4090) | no |
-| **MLX (macOS)** | `runtimes/mlx/` (`mlx_api.py` + `mlx_engine.py`) | ~4–9 GB unified | TTFA ~0.14–0.21 s, RTF ~0.62 (M4 Pro) | yes |
+| **MLX (macOS)** | `runtimes/mlx/` (`mlx_api.py` + `mlx_engine.py`) | ~4 GB unified | TTFA ~0.5 s, RTF ~1.9 (M4) | yes |
 
 [BENCHMARKS.md](BENCHMARKS.md) has the full measurements and the test hardware. **On NVIDIA, deploy GGUF unless the user asks otherwise. On macOS Apple Silicon, deploy MLX.** All runtimes serve the same speech API on one port (default 7860), so run only one at a time. The full API is in [API.md](API.md).
 
@@ -44,9 +44,8 @@ If the target machine is a Mac with Apple Silicon, follow these steps instead of
 
 ```bash
 uname -m                              # must be arm64
-python3 --version                     # 3.12+ required
-brew install uv sox                   # uv for package management, sox for audio tokenizer
-python3 -m pip install -U "huggingface_hub[hf_xet]" requests
+swift --version                       # Swift 6+ (ships with Xcode / Command Line Tools)
+brew install python@3.12 sox          # Python 3.12 for MLX, sox for audio tokenizer
 ```
 
 - **Not arm64?** Intel Macs are not supported. Use the NVIDIA path with a GPU machine instead.
@@ -58,46 +57,44 @@ python3 -m pip install -U "huggingface_hub[hf_xet]" requests
 ```bash
 git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git
 cd agent-land-breeze-tts-api
-pip install -r runtimes/mlx/requirements.txt
-git clone https://github.com/rishikksh20/breeze-tts-mlx.git && pip install -e breeze-tts-mlx/
-python3 scripts/configure_macos.py    # detects the chip; writes BREEZE_MLX_REPO etc. into .env
+swift scripts/configure-macos.swift   # detects chip, memory, GPU cores; writes .env
 ```
 
-`configure_macos.py` prints the chip model, memory and which MLX model it selected (Gust-MLX for 16+ GB, INT8 for 8 GB). Check `.env` and adjust the port if needed.
+The configure script prints the chip model, memory and the MLX model it selected (INT8). Check `.env` and adjust the port if needed.
 
 ### M3. Download the model
 
 ```bash
-python3 scripts/download_models.py    # fetches the MLX weights into $BREEZE_MODELS_DIR
+swift scripts/download-models.swift   # fetches MLX weights from HuggingFace via curl
 ```
 
-Check: `models/mlx-gust/` (or `models/mlx-int8/`) contains `.safetensors` files.
+Check: `models/mlx-int8/` contains `.safetensors` files.
 
 ### M4. Start
 
 ```bash
-./runtimes/mlx/run.sh
+swift runtimes/mlx/launch.swift       # creates .venv, installs deps, starts the server
 # In another terminal:
 until curl -fsS http://127.0.0.1:7860/health; do sleep 3; done   # {"status":"ok","sample_rate":24000,"runtime":"mlx"}
 ```
 
-First start takes 15–30 s for model loading plus Metal shader compilation. Subsequent starts are faster.
+First run creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), then starts the server. Subsequent runs skip setup and start immediately. First inference triggers Metal shader compilation (15–30 s).
 
 ### M5. Verify, then benchmark
 
 ```bash
 curl -s http://127.0.0.1:7860/v1/voices          # {"voices": []} on a fresh install
-python3 client.py "Hello! The speech server is up and running." \
+.venv/bin/python client.py "Hello! The speech server is up and running." \
   --instruction "A calm, friendly adult voice speaking clearly." --cfg-scale 4 --seed 7 -o hello.wav
 curl -s http://127.0.0.1:7860/usage | head -3      # the API guide
-python3 scripts/benchmark.py --label "<chip>, mlx" --notes "first run after warm-up"
+swift scripts/benchmark-macos.swift --label "<chip>, mlx" --notes "first run after warm-up"
 ```
 
 ### M6. Auto-start on login (optional, ask the user first)
 
 ```bash
-python3 scripts/install_launchd.py     # installs a launchd agent; restarts on crash
-# To remove: python3 scripts/install_launchd.py --remove
+swift scripts/install-launchd.swift     # installs a launchd agent; restarts on crash
+# To remove: swift scripts/install-launchd.swift --remove
 ```
 
 ### M7. Make it reachable on the LAN
@@ -210,7 +207,7 @@ docker compose up -d --build   # after changing CUDA_ARCHS, BREEZE_CPP_COMMIT or
 | PyTorch build fails in FlashAttention with `IndexError` | `FLASH_ATTN_CUDA_ARCHS` must be 80/90/100/110/120 (use 80 for any 8.x GPU) |
 | MLX: first request is very slow | Metal shader compilation on first inference. Subsequent requests are fast. The server does a warm-up at startup |
 | MLX: `ModuleNotFoundError: No module named 'breeze_tts_mlx'` | Install from source: `git clone https://github.com/rishikksh20/breeze-tts-mlx.git && pip install -e breeze-tts-mlx/` |
-| MLX: out of memory on 8 GB Mac | Use INT8 model: `python scripts/configure_macos.py --model int8` then re-download |
+| MLX: out of memory on 8 GB Mac | Use INT8 model: `swift scripts/configure-macos.swift --model int8` then re-download |
 | MLX: `ImportError: ... mlx ...` | Requires macOS ARM64 (Apple Silicon) with Python 3.12. Intel Macs are not supported |
 
 ## When you're done

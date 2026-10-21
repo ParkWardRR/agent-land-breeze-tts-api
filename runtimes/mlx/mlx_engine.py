@@ -67,7 +67,7 @@ class MLXEngine:
         from breeze_tts_mlx.sampling import SamplingConfig
 
         if self.config.cache_gb > 0:
-            mx.metal.set_cache_limit(int(self.config.cache_gb * 1024 ** 3))
+            mx.set_cache_limit(int(self.config.cache_gb * 1024 ** 3))
 
         sampling = SamplingConfig(
             temperature=self.config.temperature,
@@ -145,15 +145,15 @@ class MLXEngine:
             request["ref_audio_path"] = ref_audio_path
             request["ref_text"] = ref_text
 
-        guidance = cfg_scale if cfg_scale > 1.0 else None
-
         inputs = prepare_inputs(
             self._runtime.tokenizer,
             self._runtime.audio_tokenizer,
             self._runtime,
             [request],
             get_template(template_name),
-            guidance_scale=guidance,
+            guidance_scale=cfg_scale,
+            guidance_scale_ref=None,
+            guidance_scale_ins=None,
         )
 
         self._runtime.seed = seed

@@ -5,6 +5,8 @@ responses/
 *.log
 *.pcm
 *.tmp
+*.wav
+.venv/
 __pycache__/
 logs/
 breeze-tts-mlx/
