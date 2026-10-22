@@ -53,7 +53,7 @@ brew install python@3.12 sox          # Python 3.12 for MLX, sox for audio token
 
 ### M2. Get the `breeze` CLI and configure
 
-Download the latest `breeze` binary from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases), extract it, and make it executable:
+Download the latest `breeze` binary from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized), extract it, and make it executable:
 
 ```bash
 # Download and extract the latest release
