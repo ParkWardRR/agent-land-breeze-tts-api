@@ -40,45 +40,26 @@ Everything that varies between machines lives in **`.env`** (created from the co
 
 If the target machine is a Mac with Apple Silicon, follow these steps instead of the NVIDIA steps below.
 
-### M1. Check prerequisites
+### M1. Download and run setup
+
+Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized) and run the one-command setup:
 
 ```bash
-uname -m                              # must be arm64
-brew install python@3.12 sox          # Python 3.12 for MLX, sox for audio tokenizer
+curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz
+chmod +x breeze
+./breeze setup    # checks prerequisites, clones repo, configures hardware, downloads model
 ```
 
 - **Not arm64?** Intel Macs are not supported. Use the NVIDIA path with a GPU machine instead.
-- **No Homebrew?** Install from https://brew.sh first.
+- **No Homebrew?** `breeze setup` needs it for Python 3.12 and sox. Install from https://brew.sh first.
 - **Disk:** about 4–8 GB for MLX weights depending on the model variant.
 
-### M2. Get the `breeze` CLI and configure
+`breeze setup` installs Python 3.12 and sox via Homebrew if missing, clones the repo, detects the chip and memory, writes `.env`, and downloads the INT8 model weights. Check `.env` and adjust the port if needed.
 
-Download the latest `breeze` binary from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized), extract it, and make it executable:
+### M2. Start
 
 ```bash
-# Download and extract the latest release
-curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz
-chmod +x breeze
-
-# Clone the repo and configure
-git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git
 cd agent-land-breeze-tts-api
-../breeze configure   # or move breeze into PATH; detects chip, memory, GPU cores; writes .env
-```
-
-The configure command prints the chip model, memory and the MLX model it selected (INT8). Check `.env` and adjust the port if needed.
-
-### M3. Download the model
-
-```bash
-breeze download   # fetches MLX weights from HuggingFace via curl
-```
-
-Check: `models/mlx-int8/` contains `.safetensors` files.
-
-### M4. Start
-
-```bash
 breeze launch       # creates .venv, installs deps, starts the server
 # In another terminal:
 until curl -fsS http://127.0.0.1:7860/health; do sleep 3; done   # {"status":"ok","sample_rate":24000,"runtime":"mlx"}
@@ -86,7 +67,7 @@ until curl -fsS http://127.0.0.1:7860/health; do sleep 3; done   # {"status":"ok
 
 First run creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), then starts the server. Subsequent runs skip setup and start immediately. First inference triggers Metal shader compilation (15–30 s).
 
-### M5. Verify, then benchmark
+### M3. Verify, then benchmark
 
 ```bash
 curl -s http://127.0.0.1:7860/v1/voices          # {"voices": []} on a fresh install
@@ -96,14 +77,14 @@ curl -s http://127.0.0.1:7860/usage | head -3      # the API guide
 breeze benchmark --label "<chip>, mlx" --notes "first run after warm-up"
 ```
 
-### M6. Auto-start on login (optional, ask the user first)
+### M4. Auto-start on login (optional, ask the user first)
 
 ```bash
 breeze service install     # installs a launchd agent; restarts on crash
 # To remove: breeze service remove
 ```
 
-### M7. Make it reachable on the LAN
+### M5. Make it reachable on the LAN
 
 macOS allows incoming connections by default on the local network. Check from another machine with `curl http://<mac-ip>:<port>/health`. If the macOS firewall blocks it, the user will see a system dialog to allow the connection.
 

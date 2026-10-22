@@ -35,21 +35,18 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 
 ## Quick start (macOS Apple Silicon)
 
-Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized, native ARM64 binary — no Gatekeeper warnings), then:
+Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized — no Gatekeeper warnings):
 
 ```bash
-git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git && cd agent-land-breeze-tts-api
-brew install python@3.12 sox
-breeze configure   # detect chip + memory, write .env
-breeze download    # fetch MLX weights from HuggingFace
-breeze launch      # create venv, install deps, start server
-# In another terminal:
-.venv/bin/python client.py "Hello there." --instruction "A calm, friendly adult voice." -o hello.wav
+curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz
+chmod +x breeze
+./breeze setup        # installs deps, clones repo, configures hardware, downloads model
+./breeze launch       # start the TTS server
 ```
 
-The `breeze` CLI is a single native ARM64 binary. `breeze launch` auto-creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), and starts the server with Metal GPU acceleration.
+That's it. `breeze setup` handles everything: checks for Python 3.12 and sox (installs them via Homebrew if missing), clones the repo, detects your chip, and downloads the MLX model weights. Run `breeze launch` to start the server with Metal GPU acceleration.
 
-> **Auto-start on login:** `breeze service install` installs a launchd agent that starts the API on login and restarts on crash. Remove with `breeze service remove`.
+> **Auto-start on login:** `breeze service install` — starts on login, restarts on crash. Remove with `breeze service remove`.
 
 ## Performance
 
