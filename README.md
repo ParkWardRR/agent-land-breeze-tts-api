@@ -12,7 +12,7 @@ A self-hosted, streaming text-to-speech API for [Breeze TTS 2](https://huggingfa
   - **GGUF (default):** Breeze-TTS-2.cpp, Q8_0 with the CUDA backend, using about 4–5 GB of GPU memory.
   - **PyTorch:** the original runtime, using about 17–18 GB, and faster.
   - **MLX (macOS):** Apple Silicon native via Metal GPU, using about 4–9 GB of unified memory. Fastest on M4.
-- **One config file:** GPU, model, port and tuning are all in `.env`. `scripts/configure.py` (NVIDIA) or `scripts/configure-macos.swift` (Apple Silicon) detects the hardware and fills it in.
+- **One config file:** GPU, model, port and tuning are all in `.env`. `scripts/configure.py` (NVIDIA) or `breeze configure` (Apple Silicon) detects the hardware and fills it in.
 - **Self-documenting:** `GET /usage` serves [API.md](API.md).
 
 > **Deploying with an AI agent?** Point it at **[AGENTS.md](AGENTS.md)**: a step-by-step deploy, adapt and verify guide.
@@ -30,19 +30,21 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 
 ## Quick start (macOS Apple Silicon)
 
+Download the `breeze` CLI from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases) (Developer ID signed + notarized), then:
+
 ```bash
 git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git && cd agent-land-breeze-tts-api
 brew install python@3.12 sox
-swift scripts/configure-macos.swift   # detect chip + memory, write .env
-swift scripts/download-models.swift   # fetch MLX weights from HuggingFace
-swift runtimes/mlx/launch.swift       # create venv, install deps, start server
+breeze configure   # detect chip + memory, write .env
+breeze download    # fetch MLX weights from HuggingFace
+breeze launch      # create venv, install deps, start server
 # In another terminal:
 .venv/bin/python client.py "Hello there." --instruction "A calm, friendly adult voice." -o hello.wav
 ```
 
-All macOS tooling is native Swift. The launch script auto-creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), and starts the server with Metal GPU acceleration.
+The `breeze` CLI is a single native ARM64 binary. `breeze launch` auto-creates a Python 3.12 venv, installs all dependencies (including `breeze-tts-mlx` from source), and starts the server with Metal GPU acceleration.
 
-> **Auto-start on login:** `swift scripts/install-launchd.swift` installs a launchd agent that starts the API on login and restarts on crash.
+> **Auto-start on login:** `breeze service install` installs a launchd agent that starts the API on login and restarts on crash. Remove with `breeze service remove`.
 
 ## Performance
 
@@ -61,7 +63,7 @@ All macOS tooling is native Swift. The launch script auto-creates a Python 3.12 
 |---|---|---|---|
 | MLX, INT8 (rishikksh20/Breeze-TTS-2-mlx) | ~0.5 s | ~1.9 | ~4 GB unified |
 
-Warm responses played immediately start after about 2–4.5 s and didn't stall in testing on an otherwise idle GPU. **Sharing the GPU with another heavy job slows speech down 3–5×.** [BENCHMARKS.md](BENCHMARKS.md) has all the numbers, the models tested and the GPU-sharing results; `scripts/benchmark.py` measures your own hardware.
+Warm responses played immediately start after about 2–4.5 s and didn't stall in testing on an otherwise idle GPU. **Sharing the GPU with another heavy job slows speech down 3–5×.** [BENCHMARKS.md](BENCHMARKS.md) has all the numbers, the models tested and the GPU-sharing results; `scripts/benchmark.py` (NVIDIA) or `breeze benchmark` (macOS) measures your own hardware.
 
 ## Layout
 
@@ -71,8 +73,9 @@ Warm responses played immediately start after about 2–4.5 s and didn't stall i
 | `compose.yaml` | Both runtimes as Compose profiles; reads only `.env` |
 | `runtimes/gguf/` | Default runtime: `Dockerfile` (Breeze-TTS-2.cpp at a pinned commit, CUDA), `compat_api.py` (the API layer), `run.sh` |
 | `runtimes/pytorch/` | PyTorch runtime: `voice_api.py` + `upstream/` (BreezeBlue's inference code, a git submodule) |
-| `runtimes/mlx/` | **MLX runtime (macOS):** `mlx_api.py` (full API with warm responses), `mlx_engine.py` (inference wrapper), `launch.swift` (native launcher) |
-| `scripts/` | Swift (macOS): `configure-macos.swift`, `download-models.swift`, `benchmark-macos.swift`, `install-launchd.swift`. Python (NVIDIA): `configure.py`, `download_models.py`, `benchmark.py` |
+| `runtimes/mlx/` | **MLX runtime (macOS):** `mlx_api.py` (full API with warm responses), `mlx_engine.py` (inference wrapper) |
+| `tools/breeze/` | **`breeze` CLI (macOS):** Swift Package — configure, download, launch, benchmark, service install/remove. Built binary on [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases) |
+| `scripts/` | Python (NVIDIA): `configure.py`, `download_models.py`, `benchmark.py` |
 | `benchmarks/results/` | Raw benchmark results (JSON) |
 | `voices/` | Saved voices. Not committed; see [voices/README.md](voices/README.md) |
 | `client.py` | Command-line client: streams to WAV, prints timings and the voice id |

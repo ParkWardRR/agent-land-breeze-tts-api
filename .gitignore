@@ -8,6 +8,8 @@ responses/
 *.wav
 .venv/
 __pycache__/
+.build/
+.swiftpm/
 logs/
 breeze-tts-mlx/
 nimbalyst-local/

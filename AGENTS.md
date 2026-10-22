@@ -8,10 +8,10 @@ Everything that varies between machines lives in **`.env`** (created from the co
 
 | To change... | Set in `.env` | Then |
 |---|---|---|
-| Runtime (GGUF, PyTorch or MLX) | `COMPOSE_PROFILES=gguf`, `pytorch` or `mlx` | NVIDIA: `docker compose up -d --build`; macOS: `swift runtimes/mlx/launch.swift` |
+| Runtime (GGUF, PyTorch or MLX) | `COMPOSE_PROFILES=gguf`, `pytorch` or `mlx` | NVIDIA: `docker compose up -d --build`; macOS: `breeze launch` |
 | GPU architecture (NVIDIA) | `CUDA_ARCHS` (GGUF), `FLASH_ATTN_CUDA_ARCHS` (PyTorch); `scripts/configure.py` sets both | rebuild: `docker compose up -d --build` |
 | Which GPU (NVIDIA) | `BREEZE_GPU=all` or an index / UUID from `nvidia-smi -L` | `docker compose up -d` |
-| MLX model variant | `BREEZE_MLX_REPO` and `BREEZE_MLX_MODEL_DIR`; `scripts/configure-macos.swift` sets both | `swift scripts/download-models.swift && swift runtimes/mlx/launch.swift` |
+| MLX model variant | `BREEZE_MLX_REPO` and `BREEZE_MLX_MODEL_DIR`; `breeze configure` sets both | `breeze download && breeze launch` |
 | Model / quantization | `BREEZE_GGUF_FILE` (options listed in `.env.example`) | `python scripts/download_models.py && docker compose up -d` |
 | Where the weights live | `BREEZE_MODELS_DIR` | restart the runtime |
 | Port / LAN exposure | `BREEZE_PORT`, `BREEZE_BIND` (`127.0.0.1` = this machine only) | restart the runtime |
@@ -44,7 +44,6 @@ If the target machine is a Mac with Apple Silicon, follow these steps instead of
 
 ```bash
 uname -m                              # must be arm64
-swift --version                       # Swift 6+ (ships with Xcode / Command Line Tools)
 brew install python@3.12 sox          # Python 3.12 for MLX, sox for audio tokenizer
 ```
 
@@ -52,20 +51,27 @@ brew install python@3.12 sox          # Python 3.12 for MLX, sox for audio token
 - **No Homebrew?** Install from https://brew.sh first.
 - **Disk:** about 4–8 GB for MLX weights depending on the model variant.
 
-### M2. Get the code and configure
+### M2. Get the `breeze` CLI and configure
+
+Download the latest `breeze` binary from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases), extract it, and make it executable:
 
 ```bash
+# Download and extract the latest release
+curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz
+chmod +x breeze
+
+# Clone the repo and configure
 git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git
 cd agent-land-breeze-tts-api
-swift scripts/configure-macos.swift   # detects chip, memory, GPU cores; writes .env
+../breeze configure   # or move breeze into PATH; detects chip, memory, GPU cores; writes .env
 ```
 
-The configure script prints the chip model, memory and the MLX model it selected (INT8). Check `.env` and adjust the port if needed.
+The configure command prints the chip model, memory and the MLX model it selected (INT8). Check `.env` and adjust the port if needed.
 
 ### M3. Download the model
 
 ```bash
-swift scripts/download-models.swift   # fetches MLX weights from HuggingFace via curl
+breeze download   # fetches MLX weights from HuggingFace via curl
 ```
 
 Check: `models/mlx-int8/` contains `.safetensors` files.
@@ -73,7 +79,7 @@ Check: `models/mlx-int8/` contains `.safetensors` files.
 ### M4. Start
 
 ```bash
-swift runtimes/mlx/launch.swift       # creates .venv, installs deps, starts the server
+breeze launch       # creates .venv, installs deps, starts the server
 # In another terminal:
 until curl -fsS http://127.0.0.1:7860/health; do sleep 3; done   # {"status":"ok","sample_rate":24000,"runtime":"mlx"}
 ```
@@ -87,14 +93,14 @@ curl -s http://127.0.0.1:7860/v1/voices          # {"voices": []} on a fresh ins
 .venv/bin/python client.py "Hello! The speech server is up and running." \
   --instruction "A calm, friendly adult voice speaking clearly." --cfg-scale 4 --seed 7 -o hello.wav
 curl -s http://127.0.0.1:7860/usage | head -3      # the API guide
-swift scripts/benchmark-macos.swift --label "<chip>, mlx" --notes "first run after warm-up"
+breeze benchmark --label "<chip>, mlx" --notes "first run after warm-up"
 ```
 
 ### M6. Auto-start on login (optional, ask the user first)
 
 ```bash
-swift scripts/install-launchd.swift     # installs a launchd agent; restarts on crash
-# To remove: swift scripts/install-launchd.swift --remove
+breeze service install     # installs a launchd agent; restarts on crash
+# To remove: breeze service remove
 ```
 
 ### M7. Make it reachable on the LAN
@@ -207,7 +213,7 @@ docker compose up -d --build   # after changing CUDA_ARCHS, BREEZE_CPP_COMMIT or
 | PyTorch build fails in FlashAttention with `IndexError` | `FLASH_ATTN_CUDA_ARCHS` must be 80/90/100/110/120 (use 80 for any 8.x GPU) |
 | MLX: first request is very slow | Metal shader compilation on first inference. Subsequent requests are fast. The server does a warm-up at startup |
 | MLX: `ModuleNotFoundError: No module named 'breeze_tts_mlx'` | Install from source: `git clone https://github.com/rishikksh20/breeze-tts-mlx.git && pip install -e breeze-tts-mlx/` |
-| MLX: out of memory on 8 GB Mac | Use INT8 model: `swift scripts/configure-macos.swift --model int8` then re-download |
+| MLX: out of memory on 8 GB Mac | Use INT8 model: `breeze configure --model int8` then re-download |
 | MLX: `ImportError: ... mlx ...` | Requires macOS ARM64 (Apple Silicon) with Python 3.12. Intel Macs are not supported |
 
 ## When you're done
