@@ -35,7 +35,7 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 
 ## Quick start (macOS Apple Silicon)
 
-Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized — no Gatekeeper warnings):
+Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest) (Developer ID signed + Apple notarized — no Gatekeeper warnings):
 
 ```bash
 curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz

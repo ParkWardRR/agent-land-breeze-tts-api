@@ -42,7 +42,7 @@ If the target machine is a Mac with Apple Silicon, follow these steps instead of
 
 ### M1. Download and run setup
 
-Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed + Apple notarized) and run the one-command setup:
+Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest) (Developer ID signed + Apple notarized) and run the one-command setup:
 
 ```bash
 curl -fsSL https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest/download/breeze-macos-arm64.tar.gz | tar xz
