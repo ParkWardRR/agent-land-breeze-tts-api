@@ -1,5 +1,10 @@
 # agent-land-breeze-tts-api
 
+[![GitHub release](https://img.shields.io/github/v/release/ParkWardRR/agent-land-breeze-tts-api)](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+[![macOS](https://img.shields.io/badge/macOS-Apple%20Silicon-black?logo=apple)](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/latest)
+[![NVIDIA](https://img.shields.io/badge/NVIDIA-CUDA-76b900?logo=nvidia)](AGENTS.md)
+
 A self-hosted, streaming text-to-speech API for [Breeze TTS 2](https://huggingface.co/BreezeBlue/Breeze-TTS-2). Runs in Docker on an NVIDIA GPU **or natively on macOS Apple Silicon** (M3/M4) with Metal GPU acceleration. Built for AI agents and LAN apps that need a fast, consistent voice.
 
 - **Streaming speech:** `POST /v1/audio/speech` streams raw 24 kHz PCM as it's generated.
@@ -30,7 +35,7 @@ python client.py "Hello there." --instruction "A calm, friendly adult voice." -o
 
 ## Quick start (macOS Apple Silicon)
 
-Download the `breeze` CLI from [GitHub Releases](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases) (Developer ID signed + notarized), then:
+Download the [`breeze` CLI](https://github.com/ParkWardRR/agent-land-breeze-tts-api/releases/tag/v1.0.0) (Developer ID signed, native ARM64 binary), then:
 
 ```bash
 git clone --recurse-submodules https://github.com/devdevgoat/agent-land-breeze-tts-api.git && cd agent-land-breeze-tts-api
